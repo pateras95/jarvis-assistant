@@ -19,6 +19,7 @@
 - [Voice Commands](#-voice-commands)
 - [Configuration](#-configuration)
 - [Troubleshooting](#-troubleshooting)
+- [Building](#-building)
 - [Contributing](#-contributing)
 - [License](#-license)
 ---
@@ -46,7 +47,7 @@ JARVIS Assistant is an **offline-capable AI voice assistant** built with Electro
 - **Visual Feedback** - Reactor animation speed changes with activity
 - **Dark Theme** - Easy on the eyes
 ### 🚀 Application Management
-Launch applications with voice:
+**Launch applications with voice:**
 - Chrome / Firefox / Browser
 - IntelliJ IDEA / VS Code
 - Spotify / Discord
@@ -54,7 +55,7 @@ Launch applications with voice:
 - Calculator / Settings
 - Postman
 - And more...
-Close applications instantly:
+**Close applications instantly:**
 - "Close Chrome"
 - "Kill Spotify"
 - "Exit Discord"
@@ -481,7 +482,7 @@ if (command.includes('your custom trigger')) {
 2. Close unused applications
 3. Reduce animation effects
 ---
-## 🏗️ Building Executables
+## 🏗️ Building
 ### Linux AppImage
 ```bash
 npm run build:linux
