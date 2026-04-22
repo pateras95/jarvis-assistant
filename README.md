@@ -62,13 +62,22 @@ Control your system, launch apps, play music, and interact using **natural voice
 - Spoken number support: "set volume to fifty"
 - Screenshots & screen lock
 - Internet speed test (auto-starts via speedtest.net/run)
+- Clear cached RAM
+- Brightness control (global or per-monitor), Do Not Disturb, empty trash, reboot/shutdown
+- **Auto-starts on login** (GNOME autostart)
 
 ### 🖥️ Dual Monitor Support
 - Detects and displays all connected monitors
 - Voice command: **"Move to other screen"** — toggles JARVIS between displays
 
+### 📝 Checklist
+- Built-in checklist accessible from the top bar or by voice ("open notes")
+- Persistent checklist with add/check/delete
+- Voice commands: "Add [item] to checklist", "Check [item]", "Clear checklist"
+- Data saved to `jarvis_notes.json` — survives restarts
+
 ### 🎵 Media
-- Spotify voice control (search, play, pause, skip)
+- Spotify voice control (search, play, pause, skip) — **desktop app only** (no web browser)
 - Media key simulation (works with any player)
 
 ### 💻 Developer Mode
@@ -200,9 +209,16 @@ npm start
 | "Screenshot" | Capture screen |
 | "Lock screen" | Lock session |
 | "Brightness up" / "Brightness down" | Screen brightness control |
+| "First monitor brightness up" | Per-monitor brightness control |
+| "Second monitor brightness down" | Per-monitor brightness control |
 | "Do not disturb" | Disable notifications |
 | "Notifications on" | Re-enable notifications |
 | "Empty trash" | Clear trash/recycle bin |
+| "Clear RAM" / "Free memory" | Drop cached RAM |
+| "Open notes" / "Notepad" | Open built-in checklist panel |
+| "Add [item] to checklist" | Add item to checklist by voice |
+| "Check [item]" | Mark checklist item as done |
+| "Clear checklist" | Remove all checklist items |
 | "Restart computer" / "Power off" | System restart/shutdown (5s delay) |
 | "Move to other screen" | Toggle window between monitors |
 | "What can you do" | List all JARVIS abilities |

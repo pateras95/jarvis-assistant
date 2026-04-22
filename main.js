@@ -129,35 +129,30 @@ ipcMain.on('launch-app', (event, appName) => {
   }
 });
 
-// Play a specific Spotify URI (track/album/playlist)
+// Play a specific Spotify URI (track/album/playlist) — app only
 ipcMain.on('spotify-play', (event, uri) => {
   console.log(`[JARVIS] Spotify play: ${uri}`);
-  // xdg-open with spotify: URI will open and auto-play in Spotify
-  spawn('xdg-open', [uri], { detached: true, stdio: 'ignore' }).unref();
+  // Use spotify --uri to ensure it opens in the desktop app, not browser
+  spawn('spotify', ['--uri=' + uri], { detached: true, stdio: 'ignore', shell: true }).unref();
 });
 
-// Search and play a song on Spotify
+// Search and play a song on Spotify (app only, not web)
 ipcMain.on('spotify-search-play', (event, query) => {
   console.log(`[JARVIS] Spotify search+play: ${query}`);
-  // Open Spotify search URI
-  const searchUri = `spotify:search:${encodeURIComponent(query)}`;
-  spawn('xdg-open', [searchUri], { detached: true, stdio: 'ignore' }).unref();
+  // Use spotify: URI to open search in the Spotify desktop app
+  const spotifyUri = `spotify:search:${encodeURIComponent(query)}`;
+  spawn('spotify', ['--uri=' + spotifyUri], { detached: true, stdio: 'ignore', shell: true }).unref();
 
-  // After search loads, focus Spotify and use keyboard to play first result
+  // After Spotify opens with search results, use dbus to interact or xdotool to play first result
   setTimeout(() => {
     exec('xdotool search --name "Spotify" windowactivate --sync 2>/dev/null', () => {
       setTimeout(() => {
-        // Tab into results area, then Enter to play
-        // Multiple Tab presses to reach the first song result, then Enter
-        exec('xdotool key Tab Tab Tab Tab Tab Tab Enter', (err) => {
-          if (err) {
-            console.log('[JARVIS] Tab+Enter failed, trying direct Enter');
-            exec('xdotool key Return');
-          } else {
-            console.log('[JARVIS] Sent Tab+Enter to Spotify to play first result');
-          }
+        // Navigate to first song result and play it
+        exec('xdotool key Tab Tab Tab Tab Enter', (err) => {
+          if (err) console.log('[JARVIS] xdotool play attempt error:', err.message);
+          console.log('[JARVIS] Attempted to play first Spotify result');
         });
-      }, 1500);
+      }, 2000);
     });
   }, 3000);
 });
@@ -186,6 +181,41 @@ ipcMain.on('media-control', (event, action) => {
 ipcMain.on('system-command', (event, cmd) => {
   console.log(`[JARVIS] System: ${cmd}`);
   const homeDir = os.homedir();
+
+  // Handle parameterized commands first
+  if (cmd.startsWith('brightness-') && cmd.includes(':')) {
+    const bMatch = cmd.match(/^brightness-(up|down):(\d+)$/);
+    if (bMatch) {
+      const dir = bMatch[1];
+      const monNum = parseInt(bMatch[2]);
+      exec('xrandr | grep " connected" | cut -d" " -f1', (err, stdout) => {
+        if (err) return;
+        const monitors = stdout.trim().split('\n').filter(Boolean);
+        let targets = [];
+        if (monNum === 0 || monitors.length === 1) targets = monitors;
+        else if (monNum <= monitors.length) targets = [monitors[monNum - 1]];
+        else targets = monitors;
+        targets.forEach(output => {
+          exec(`xrandr --verbose | grep -A5 "^${output}" | grep Brightness | awk '{print $2}'`, (e, bOut) => {
+            let current = parseFloat(bOut) || 1.0;
+            let next = dir === 'up' ? Math.min(1.0, current + 0.1) : Math.max(0.2, current - 0.1);
+            exec(`xrandr --output ${output} --brightness ${next.toFixed(1)}`);
+            console.log(`[JARVIS] Brightness ${output}: ${current.toFixed(1)} -> ${next.toFixed(1)}`);
+          });
+        });
+      });
+    }
+    return;
+  }
+  if (cmd.startsWith('volume-set:')) {
+    const pct = cmd.split(':')[1];
+    const wpctlVol = (parseInt(pct) / 100).toFixed(2);
+    exec(`wpctl set-volume @DEFAULT_AUDIO_SINK@ ${wpctlVol}`, (err) => {
+      if (err) exec(`amixer set Master ${pct}%`);
+    });
+    return;
+  }
+
   switch (cmd) {
     case 'screenshot':
       exec(`gnome-screenshot -f ${homeDir}/Pictures/jarvis-screenshot-$(date +%s).png`, (err) => {
@@ -205,12 +235,6 @@ ipcMain.on('system-command', (event, cmd) => {
         if (err) exec('amixer set Master 5%-');
       });
       break;
-    case 'brightness-up':
-      exec('brightnessctl set +10% 2>/dev/null || xrandr --output $(xrandr | grep " connected" | head -1 | cut -d" " -f1) --brightness 1.0');
-      break;
-    case 'brightness-down':
-      exec('brightnessctl set 10%- 2>/dev/null || xrandr --output $(xrandr | grep " connected" | head -1 | cut -d" " -f1) --brightness 0.7');
-      break;
     case 'dnd-on':
       exec('gsettings set org.gnome.desktop.notifications show-banners false 2>/dev/null');
       break;
@@ -226,16 +250,38 @@ ipcMain.on('system-command', (event, cmd) => {
     case 'poweroff':
       exec('systemctl poweroff');
       break;
-    default:
-      if (cmd.startsWith('volume-set:')) {
-        const pct = cmd.split(':')[1];
-        const wpctlVol = (parseInt(pct) / 100).toFixed(2);
-        exec(`wpctl set-volume @DEFAULT_AUDIO_SINK@ ${wpctlVol}`, (err) => {
-          if (err) exec(`amixer set Master ${pct}%`);
-        });
-      }
+    case 'clear-ram':
+      exec('sync && echo 3 | sudo tee /proc/sys/vm/drop_caches 2>/dev/null', (err) => {
+        if (err) exec('sync && echo 3 > /proc/sys/vm/drop_caches 2>/dev/null');
+        console.log('[JARVIS] Cleared RAM cache');
+      });
       break;
   }
+});
+
+
+// ─── Notes / Checklist persistence ───────────────────────────────
+const NOTES_FILE = path.join(__dirname, 'jarvis_notes.json');
+
+function loadNotes() {
+  try {
+    if (require('fs').existsSync(NOTES_FILE)) {
+      return JSON.parse(require('fs').readFileSync(NOTES_FILE, 'utf8'));
+    }
+  } catch (e) { }
+  return { notes: '', checklist: [] };
+}
+
+function saveNotes(data) {
+  require('fs').writeFileSync(NOTES_FILE, JSON.stringify(data, null, 2));
+}
+
+ipcMain.on('load-notes', (event) => {
+  event.reply('notes-loaded', loadNotes());
+});
+
+ipcMain.on('save-notes', (event, data) => {
+  saveNotes(data);
 });
 
 // Close/kill applications
@@ -328,8 +374,9 @@ ipcMain.on('get-system-stats', async (event) => {
       },
       memory: {
         total: (mem.total / 1024 / 1024 / 1024).toFixed(1),
-        used: (mem.used / 1024 / 1024 / 1024).toFixed(1),
-        percent: Math.round((mem.used / mem.total) * 100)
+        used: (mem.active / 1024 / 1024 / 1024).toFixed(1),
+        available: (mem.available / 1024 / 1024 / 1024).toFixed(1),
+        percent: Math.round((mem.active / mem.total) * 100)
       },
       disk: {
         total: Math.round(disk[0]?.size / 1024 / 1024 / 1024) || 0,

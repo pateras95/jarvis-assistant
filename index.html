@@ -513,6 +513,116 @@
         .net-arrow.up { color: var(--warning); }
 
         #mic-test-result { font-size: 12px; color: rgba(255,255,255,0.5); text-align: center; margin-top: 6px; }
+
+        /* ── Notes Panel ── */
+        .notes-overlay {
+            left: 50%;
+            transform: translateX(-50%);
+            width: 500px;
+            max-height: calc(100vh - 100px);
+        }
+
+        .notes-textarea {
+            width: 100%;
+            min-height: 100px;
+            background: rgba(0, 212, 255, 0.04);
+            border: 1px solid var(--border);
+            color: rgba(255, 255, 255, 0.8);
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 14px;
+            padding: 10px;
+            border-radius: 4px;
+            outline: none;
+            resize: vertical;
+            line-height: 1.6;
+        }
+
+        .notes-textarea:focus { border-color: var(--cyan-dim); }
+        .notes-textarea::placeholder { color: rgba(255,255,255,0.2); }
+
+        .checklist-container { margin-top: 12px; }
+
+        .checklist-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(0, 212, 255, 0.06);
+        }
+
+        .checklist-item input[type="checkbox"] {
+            accent-color: var(--success);
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+
+        .checklist-item .check-text {
+            flex: 1;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .checklist-item.checked .check-text {
+            text-decoration: line-through;
+            color: rgba(255, 255, 255, 0.3);
+        }
+
+        .checklist-item .check-delete {
+            cursor: pointer;
+            color: rgba(255, 80, 80, 0.4);
+            font-size: 16px;
+            transition: color 0.2s;
+            background: none;
+            border: none;
+            padding: 0 4px;
+        }
+
+        .checklist-item .check-delete:hover { color: var(--danger); }
+
+        .add-check-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .add-check-input {
+            flex: 1;
+            background: rgba(0, 212, 255, 0.04);
+            border: 1px solid var(--border);
+            color: rgba(255, 255, 255, 0.8);
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 13px;
+            padding: 8px 10px;
+            border-radius: 3px;
+            outline: none;
+        }
+
+        .add-check-input:focus { border-color: var(--cyan-dim); }
+        .add-check-input::placeholder { color: rgba(255,255,255,0.2); }
+
+        .add-check-btn {
+            padding: 8px 14px;
+            background: rgba(0, 212, 255, 0.08);
+            border: 1px solid var(--border);
+            color: var(--cyan);
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 13px;
+            cursor: pointer;
+            border-radius: 3px;
+            transition: all 0.2s;
+        }
+
+        .add-check-btn:hover { background: rgba(0, 212, 255, 0.15); }
+
+        .section-label {
+            font-family: 'Orbitron', monospace;
+            font-size: 9px;
+            letter-spacing: 2px;
+            color: var(--gold);
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
     </style>
 </head>
 <body>
@@ -525,6 +635,9 @@
         </div>
         <div class="top-bar-center" id="status">SYSTEM ONLINE</div>
         <div class="top-bar-right">
+            <div class="top-btn" id="notes-btn" title="Checklist">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            </div>
             <div class="top-btn" id="help-btn" title="Commands">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
             </div>
@@ -713,6 +826,8 @@
             <div class="cmd-item"><span>"Test internet"</span> / <span>"Speed test"</span></div>
             <div class="cmd-item"><span>"Move to other screen"</span> — dual monitor</div>
             <div class="cmd-item"><span>"Brightness up"</span> / <span>"Brightness down"</span></div>
+            <div class="cmd-item"><span>"First monitor brightness up"</span> / <span>"Second monitor brightness down"</span></div>
+            <div class="cmd-item"><span>"Clear checklist"</span> — clear all items</div>
             <div class="cmd-item"><span>"Do not disturb"</span> / <span>"Notifications on"</span></div>
             <div class="cmd-item"><span>"Empty trash"</span></div>
             <div class="cmd-item"><span>"Restart computer"</span> / <span>"Power off"</span></div>
@@ -778,6 +893,25 @@
             <label class="setting-label">Microphone</label>
             <button class="setting-btn" id="mic-test-btn">🎤 Test Microphone</button>
             <div id="mic-test-result"></div>
+        </div>
+    </div>
+
+    <!-- NOTES & CHECKLIST OVERLAY -->
+    <div id="notes-panel" class="overlay-panel notes-overlay">
+        <div class="overlay-header">
+            <span class="overlay-title">Checklist</span>
+            <button class="overlay-close" id="close-notes">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+
+        <div>
+            <div id="checklist-items"></div>
+            <div class="add-check-row">
+                <input type="text" id="new-check-input" class="add-check-input" placeholder="Add new item...">
+                <button class="add-check-btn" id="add-check-btn">+ Add</button>
+            </div>
+            <button class="setting-btn" id="clear-checklist-btn" style="margin-top: 10px; color: var(--danger); border-color: rgba(255,68,85,0.3);">🗑 Clear All</button>
         </div>
     </div>
 

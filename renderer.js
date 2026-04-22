@@ -156,9 +156,8 @@ ipcRenderer.on('voice-result', (event, data) => {
                 'Ah Gabby! The only person who makes Sir smile more than a successfully compiled code. That is saying something.',
             ];
             speak(greetings[Math.floor(Math.random() * greetings.length)]);
-            // Open Spotify and play Dead and Lovely by Tom Waits
-            setTimeout(() => ipcRenderer.send('launch-app', 'spotify'), 1000);
-            setTimeout(() => ipcRenderer.send('spotify-search-play', 'Dead and Lovely Tom Waits'), 5000);
+            // Open Spotify and play Dead and Lovely by Tom Waits (direct track URI)
+            setTimeout(() => ipcRenderer.send('spotify-play', 'spotify:track:6uunyBNvRyzQl5imkPYdEb'), 2000);
             return;
         }
 
@@ -314,6 +313,51 @@ const processCommand = (command) => {
         return;
     }
 
+    // ── Clear RAM Cache ──
+    if (fuzzyAny(command, ['clear ram', 'clear cache', 'clear memory', 'free ram', 'free memory', 'clean ram'])) {
+        ipcRenderer.send('system-command', 'clear-ram');
+        speak('Clearing cached memory Sir.');
+        return;
+    }
+
+    // ── Open Notes / Notepad ──
+    if (fuzzyAny(command, ['open notes', 'open notepad', 'notes', 'notepad', 'open my notes', 'show notes'])) {
+        document.getElementById('notes-panel')?.classList.add('show');
+        speak('Opening your notes.');
+        return;
+    }
+
+    // ── Add to checklist by voice ──
+    const addCheckMatch = command.match(/(?:add|put|write)\s+(.+?)(?:\s+to\s+(?:the\s+)?(?:check\s*list|list|notes))?$/);
+    if (addCheckMatch && fuzzyAny(command, ['add', 'put', 'write']) &&
+        (command.includes('list') || command.includes('check') || command.includes('note') || command.includes('task') || command.includes('todo') || command.includes('to do'))) {
+        const item = addCheckMatch[1].replace(/\s*(?:to the list|to the checklist|to my list|to checklist|to list|to notes)$/i, '').trim();
+        if (item) {
+            addChecklistItem(item);
+            speak(`Added "${item}" to your checklist.`);
+            return;
+        }
+    }
+
+    // ── Check / Complete item on checklist by voice ──
+    const checkMatch = command.match(/(?:check|complete|done|finish|tick)\s+(.+)/);
+    if (checkMatch) {
+        const target = checkMatch[1].replace(/\s*(?:on the list|on the checklist|from the list|off)$/i, '').trim();
+        if (target && checkItemByVoice(target)) {
+            speak(`Checked off "${target}".`);
+            return;
+        }
+    }
+
+    // ── Clear checklist by voice ──
+    if (fuzzyAny(command, ['clear checklist', 'clear the checklist', 'clear list', 'clear the list', 'empty checklist', 'delete checklist', 'reset checklist'])) {
+        notesData.checklist = [];
+        renderChecklist();
+        saveNotesData();
+        speak('Checklist cleared.');
+        return;
+    }
+
     // ── Internet Speed Test ──
     if (fuzzyAny(command, ['test internet', 'speed test', 'test my internet', 'internet speed',
         'check internet', 'check my internet', 'test the internet'])) {
@@ -322,15 +366,17 @@ const processCommand = (command) => {
         return;
     }
 
-    // ── Brightness Control ──
-    if (fuzzyAny(command, ['brightness up', 'brighter', 'more brightness'])) {
-        ipcRenderer.send('system-command', 'brightness-up');
-        speak('Brightness up.');
-        return;
-    }
-    if (fuzzyAny(command, ['brightness down', 'dimmer', 'less brightness', 'dim'])) {
-        ipcRenderer.send('system-command', 'brightness-down');
-        speak('Brightness down.');
+    // ── Brightness Control (per-monitor) ──
+    const brightnessMatch = command.match(/(?:(first|second|1st|2nd|primary|main|left|right)\s+)?(?:monitor\s+|screen\s+)?brightness\s+(up|down)/);
+    if (brightnessMatch || fuzzyAny(command, ['brightness up', 'brighter', 'more brightness', 'brightness down', 'dimmer', 'less brightness', 'dim'])) {
+        let monitor = brightnessMatch?.[1] || null;
+        let direction = brightnessMatch?.[2] || (fuzzyAny(command, ['brightness up', 'brighter', 'more brightness']) ? 'up' : 'down');
+        let monitorNum = 0; // 0 = all/primary
+        if (monitor && (monitor === 'second' || monitor === '2nd' || monitor === 'right')) monitorNum = 2;
+        else if (monitor && (monitor === 'first' || monitor === '1st' || monitor === 'primary' || monitor === 'main' || monitor === 'left')) monitorNum = 1;
+        ipcRenderer.send('system-command', `brightness-${direction}:${monitorNum}`);
+        const label = monitorNum > 0 ? `monitor ${monitorNum}` : '';
+        speak(`Brightness ${direction} ${label}.`);
         return;
     }
 
@@ -420,11 +466,17 @@ reactorEl.addEventListener('click', () => {
 });
 
 // ─── Top Bar Buttons ─────────────────────────────────────────────
+const notesBtn = document.getElementById('notes-btn');
+const notesPanel = document.getElementById('notes-panel');
+const closeNotesBtn = document.getElementById('close-notes');
+
 closeBtn?.addEventListener('click', () => ipcRenderer.send('app-quit'));
-settingsBtn?.addEventListener('click', () => { settingsPanel?.classList.toggle('show'); commandsPanel?.classList.remove('show'); });
+settingsBtn?.addEventListener('click', () => { settingsPanel?.classList.toggle('show'); commandsPanel?.classList.remove('show'); notesPanel?.classList.remove('show'); });
 closeSettingsBtn?.addEventListener('click', () => settingsPanel?.classList.remove('show'));
-helpBtn?.addEventListener('click', () => { commandsPanel?.classList.toggle('show'); settingsPanel?.classList.remove('show'); });
+helpBtn?.addEventListener('click', () => { commandsPanel?.classList.toggle('show'); settingsPanel?.classList.remove('show'); notesPanel?.classList.remove('show'); });
 closeCommandsBtn?.addEventListener('click', () => commandsPanel?.classList.remove('show'));
+notesBtn?.addEventListener('click', () => { notesPanel?.classList.toggle('show'); settingsPanel?.classList.remove('show'); commandsPanel?.classList.remove('show'); });
+closeNotesBtn?.addEventListener('click', () => notesPanel?.classList.remove('show'));
 
 // ─── Voice Settings Controls ─────────────────────────────────────
 const rateValue = document.getElementById('rate-value');
@@ -581,6 +633,98 @@ if (versionEl) versionEl.innerText = `v${APP_VERSION}`;
 
 window.addEventListener('beforeunload', () => {
     if (systemStatsInterval) clearInterval(systemStatsInterval);
+    saveNotesData(); // Save before closing
+});
+
+// ─── Notes & Checklist ───────────────────────────────────────────
+let notesData = { notes: '', checklist: [] };
+
+function saveNotesData() {
+    ipcRenderer.send('save-notes', notesData);
+}
+
+function renderChecklist() {
+    const container = document.getElementById('checklist-items');
+    if (!container) return;
+    container.innerHTML = notesData.checklist.map((item, i) => `
+        <div class="checklist-item ${item.checked ? 'checked' : ''}" data-index="${i}">
+            <input type="checkbox" ${item.checked ? 'checked' : ''} data-check-idx="${i}">
+            <span class="check-text">${item.text}</span>
+            <button class="check-delete" data-del-idx="${i}">×</button>
+        </div>
+    `).join('');
+
+    // Bind checkbox events
+    container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+        cb.addEventListener('change', (e) => {
+            const idx = parseInt(e.target.dataset.checkIdx);
+            notesData.checklist[idx].checked = e.target.checked;
+            renderChecklist();
+            saveNotesData();
+        });
+    });
+
+    // Bind delete events
+    container.querySelectorAll('.check-delete').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const idx = parseInt(e.target.dataset.delIdx);
+            notesData.checklist.splice(idx, 1);
+            renderChecklist();
+            saveNotesData();
+        });
+    });
+}
+
+function addChecklistItem(text) {
+    notesData.checklist.push({ text, checked: false });
+    renderChecklist();
+    saveNotesData();
+}
+
+function checkItemByVoice(target) {
+    const lower = target.toLowerCase();
+    for (let i = 0; i < notesData.checklist.length; i++) {
+        if (!notesData.checklist[i].checked && fuzzyIncludes(notesData.checklist[i].text.toLowerCase(), lower)) {
+            notesData.checklist[i].checked = true;
+            renderChecklist();
+            saveNotesData();
+            return true;
+        }
+    }
+    return false;
+}
+
+// Load notes on startup
+ipcRenderer.send('load-notes');
+ipcRenderer.on('notes-loaded', (event, data) => {
+    notesData = data || { notes: '', checklist: [] };
+    renderChecklist();
+});
+
+// Save notes on change (debounced)
+let notesSaveTimer = null;
+
+// Add checklist item via UI button
+document.getElementById('add-check-btn')?.addEventListener('click', () => {
+    const input = document.getElementById('new-check-input');
+    if (input && input.value.trim()) {
+        addChecklistItem(input.value.trim());
+        input.value = '';
+    }
+});
+
+// Enter key to add item
+document.getElementById('new-check-input')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        document.getElementById('add-check-btn')?.click();
+    }
+});
+
+// Clear all checklist items via UI button
+document.getElementById('clear-checklist-btn')?.addEventListener('click', () => {
+    notesData.checklist = [];
+    renderChecklist();
+    saveNotesData();
 });
 
 console.log('JARVIS initialized.');
