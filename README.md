@@ -10,10 +10,10 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Electron-41.2.2-47848F?logo=electron"/>
-  <img src="https://img.shields.io/badge/Python-3.8+-3776AB?logo=python&logoColor=white"/>
-  <img src="https://img.shields.io/badge/Node.js-18+-339933?logo=node.js&logoColor=white"/>
-  <img src="https://img.shields.io/badge/License-ISC-blue.svg"/>
+  <img src="https://img.shields.io/badge/Electron-41.2.2-47848F?logo=electron" alt="Electron"/>
+  <img src="https://img.shields.io/badge/Python-3.8+-3776AB?logo=python&logoColor=white" alt="Python"/>
+  <img src="https://img.shields.io/badge/Node.js-18+-339933?logo=node.js&logoColor=white" alt="Node.js"/>
+  <img src="https://img.shields.io/badge/License-ISC-blue.svg" alt="License"/>
 </p>
 
 ---
@@ -31,44 +31,55 @@ Control your system, launch apps, play music, and interact using **natural voice
 ### 🎤 Voice AI
 - Offline speech recognition using **Vosk**
 - Wake word activation: **"Daddy is Home"**
-- Real-time transcription
+- **Fuzzy matching** with edit-distance tolerance — no need to speak perfectly
+- Word-to-number parsing for spoken numbers (e.g. "volume fifty")
+- **Neural TTS** via [Piper](https://github.com/rhasspy/piper) — natural human-sounding British voice
+- Fallback to spd-say if Piper unavailable
 
 ### 🎨 Interface
-- Arc Reactor inspired UI
-- Transparent floating window
-- Live visual feedback
+- Clean three-panel grid layout with Orbitron + Rajdhani fonts
+- Arc Reactor core with multi-ring animations
+- Gold accent headers, purple model labels, color-coded alerts
+- Subtle scan-line overlay for depth
+- Overlay panels for settings and command reference
+- Status bar with live indicators
+
+### 📊 Real-Time System Monitoring
+- **CPU**: Usage %, temperature, core count, model name
+- **Memory**: Usage %, used/total GB
+- **Disk**: Usage %, used/total GB
+- **Network**: Live download/upload speed
+- **GPU**: Temperature, model, VRAM
+- **System**: OS, kernel version, uptime
+- **Displays**: Multi-monitor detection with resolutions
+- **Session**: Live clock and date
+- Color-coded alerts (green → yellow → red)
 
 ### ⚡ System Control
-- Launch & close applications
-- Volume & media control
+- Launch & close applications by voice
+- Volume control via **PipeWire** (`wpctl`) with `amixer` fallback
+- Spoken number support: "set volume to fifty"
 - Screenshots & screen lock
+- Internet speed test (auto-starts via speedtest.net/run)
+
+### 🖥️ Dual Monitor Support
+- Detects and displays all connected monitors
+- Voice command: **"Move to other screen"** — toggles JARVIS between displays
 
 ### 🎵 Media
-- Spotify voice control
-- Auto-play songs via commands
+- Spotify voice control (search, play, pause, skip)
+- Media key simulation (works with any player)
 
 ### 💻 Developer Mode
 - One command workspace setup:
-  > “We have work to do”
+  > "We have work to do" → Chrome + IntelliJ + Discord + Spotify
 
 ---
 
 ## 🧠 How It Works
 
-### Voice Pipeline
-
 ```
-
-Microphone → Vosk → Command Parser → Electron → Action → TTS
-
-```
-
-### Execution Flow
-
-```
-
-Wake Word → Command → Match → Execute → Speak Response
-
+Microphone → Vosk (offline) → Command Parser → Electron IPC → Action → TTS Response
 ```
 
 ---
@@ -76,28 +87,37 @@ Wake Word → Command → Match → Execute → Speak Response
 ## 🏗️ Architecture
 
 ```
-
-UI (Electron Renderer)
-│
-▼
-Main Process (Node.js)
-│
-▼
-Python Voice Engine (Vosk + TTS)
-│
-Mic / Speakers
-
-````
+┌─────────────────────────────┐
+│  UI (Electron Renderer)     │
+│  ├─ Left Panel  (sys stats) │
+│  ├─ Center      (reactor)   │
+│  └─ Right Panel (hw info)   │
+├─────────────────────────────┤
+│  Main Process (Node.js)     │
+│  ├─ systeminformation       │
+│  ├─ wpctl / amixer          │
+│  └─ xdotool                 │
+├─────────────────────────────┤
+│  Python Voice Engine        │
+│  ├─ Vosk (speech-to-text)   │
+│  └─ spd-say (text-to-speech)│
+└─────────────────────────────┘
+```
 
 ---
 
 ## 🔌 Integrations
 
-- **Vosk** → Speech Recognition  
-- **speech-dispatcher** → Text-to-Speech  
-- **xdotool** → System automation  
-- **Spotify** → Music playback  
-- **Electron** → Desktop UI  
+| Package | Purpose |
+|---------|---------|
+| **Vosk** | Offline speech recognition |
+| **Piper** | Neural TTS (natural human voice) |
+| **speech-dispatcher** | Fallback TTS (spd-say) |
+| **systeminformation** | CPU, RAM, disk, GPU, network stats |
+| **xdotool** | System automation & media keys |
+| **wpctl / amixer** | Volume control (PipeWire / ALSA) |
+| **Spotify** | Music search & playback |
+| **Electron** | Desktop UI framework |
 
 ---
 
@@ -110,6 +130,7 @@ Mic / Speakers
 - Node.js 18+
 - Python 3.8+
 - Microphone
+- PipeWire or PulseAudio (for volume control)
 
 </details>
 
@@ -120,13 +141,13 @@ Mic / Speakers
 ```bash
 git clone https://github.com/pateras95/jarvis-assistant.git
 cd jarvis-assistant
-````
+```
 
 ### 2. Install dependencies
 
 ```bash
 npm install
-pip3 install vosk sounddevice
+pip3 install vosk sounddevice piper-tts
 ```
 
 ### 3. Install system tools
@@ -142,7 +163,17 @@ sudo dnf install speech-dispatcher xdotool
 sudo pacman -S speech-dispatcher xdotool
 ```
 
-### 4. Run
+### 4. Download voice model (for natural TTS)
+
+The Piper neural voice model (~61MB) is included in `tts_models/`. If missing:
+
+```bash
+mkdir -p tts_models
+wget -O tts_models/voice.onnx "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_GB/alan/medium/en_GB-alan-medium.onnx"
+wget -O tts_models/voice.onnx.json "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_GB/alan/medium/en_GB-alan-medium.onnx.json"
+```
+
+### 5. Run
 
 ```bash
 npm start
@@ -150,69 +181,88 @@ npm start
 
 ---
 
-## 🎤 Example Commands
+## 🎤 Voice Commands
 
-| Command              | Action          |
-| -------------------- | --------------- |
-| "Open Chrome"        | Launch browser  |
-| "Play music"         | Start Spotify   |
-| "Volume up"          | Increase volume |
-| "Take screenshot"    | Capture screen  |
-| "We have work to do" | Full dev setup  |
+| Command | Action |
+|---------|--------|
+| "Daddy is Home" | Activate JARVIS (wake word) |
+| "Gabby is here" | Greet Gabby + play her song 💜 |
+| "Open Chrome" | Launch application |
+| "Close Spotify" | Kill application |
+| "Play [song name]" | Search & play on Spotify |
+| "Pause" / "Resume" / "Next" / "Previous" | Media controls |
+| "Volume up" / "Volume down" | Adjust volume ±5% |
+| "Volume fifty" / "Set volume to 80" | Set exact volume (words or digits) |
+| "Mute" | Toggle mute |
+| "Search [query]" | Google search |
+| "Test internet" / "Speed test" | Open speedtest.net (auto-starts) |
+| "Screenshot" | Capture screen |
+| "Lock screen" | Lock session |
+| "Move to other screen" | Toggle window between monitors |
+| "We have work to do" | Launch full dev workspace |
+| "What time" / "What date" | Time & date |
+| "Tell me a joke" | Random dev joke |
+| "Goodbye" | Shut down JARVIS |
 
 ---
 
 ## ⚙️ Configuration
 
-Edit the following files:
-
-* `main.js` → application mappings
-* `renderer.js` → custom voice commands
+| File | What to edit |
+|------|-------------|
+| `main.js` | App launcher map, system command handlers |
+| `renderer.js` | Voice command matching, UI behavior |
+| `index.html` | Layout, styling, panel content |
 
 ---
 
 ## 🛠️ Troubleshooting
 
 <details>
+<summary><strong>🔊 Volume not working</strong></summary>
+
+Check which audio system you have:
+
+```bash
+# PipeWire (modern)
+wpctl get-volume @DEFAULT_AUDIO_SINK@
+
+# PulseAudio (legacy)
+pactl get-sink-volume @DEFAULT_SINK@
+
+# ALSA (fallback)
+amixer get Master
+```
+
+JARVIS uses `wpctl` first, then falls back to `amixer`.
+
+</details>
+
+<details>
 <summary><strong>🎤 Voice not working</strong></summary>
 
-Check microphone:
-
 ```bash
-arecord -l
-```
-
-Verify Vosk model:
-
-```bash
-ls models/english/
+arecord -l                  # Check microphone
+ls models/english/          # Verify Vosk model
 ```
 
 </details>
 
----
-
 <details>
-<summary><strong>🔊 No sound output</strong></summary>
-
-Test TTS:
+<summary><strong>🖥️ Dual monitor not detected</strong></summary>
 
 ```bash
-spd-say "test"
+xrandr --listmonitors       # Check connected displays
 ```
+
+JARVIS auto-detects all displays on startup.
 
 </details>
 
----
-
 <details>
-<summary><strong>🚀 Apps not launching</strong></summary>
+<summary><strong>🌐 Speed test not auto-starting</strong></summary>
 
-Check installation:
-
-```bash
-which google-chrome spotify code
-```
+JARVIS opens `speedtest.net/run` which auto-starts the test. If Chrome blocks it, the page will still load for manual start.
 
 </details>
 
@@ -244,10 +294,24 @@ This project is licensed under the **ISC License**.
 
 ## 💡 Future Ideas
 
-* 🌦️ Weather API
+* 🌦️ Weather API integration
 * 🏠 Smart home control
 * 🌍 Multi-language support
-* 🤖 AI conversational mode
+* 🤖 AI conversational mode (LLM integration)
+* 📊 Process manager (kill by voice)
+* 🔋 Battery monitoring (laptops)
+
+---
+
+## 🔢 Versioning
+
+JARVIS uses **automatic semantic versioning**. A git pre-commit hook bumps the patch version in `package.json` on every commit:
+
+```
+2.4.0 → commit → 2.4.1 → commit → 2.4.2 → ...
+```
+
+The real version from `package.json` is displayed in the bottom-right of the UI.
 
 ---
 
@@ -255,4 +319,3 @@ This project is licensed under the **ISC License**.
   <em>"Sometimes you gotta run before you can walk."</em><br>
   — Tony Stark
 </p>
-```

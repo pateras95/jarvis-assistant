@@ -1,6 +1,8 @@
-const { app, BrowserWindow, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, screen } = require('electron');
 const path = require('path');
 const { spawn, exec } = require('child_process');
+const os = require('os');
+const si = require('systeminformation');
 
 // Enable speech synthesis features for Linux
 app.commandLine.appendSwitch('enable-speech-dispatcher');
@@ -34,8 +36,8 @@ const APP_MAP = {
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 600,
-    height: 600,
+    width: 1000,
+    height: 850,
     frame: false,
     transparent: true,
     webPreferences: {
@@ -177,7 +179,7 @@ ipcMain.on('media-control', (event, action) => {
 // System commands
 ipcMain.on('system-command', (event, cmd) => {
   console.log(`[JARVIS] System: ${cmd}`);
-  const homeDir = require('os').homedir();
+  const homeDir = os.homedir();
   switch (cmd) {
     case 'screenshot':
       exec(`gnome-screenshot -f ${homeDir}/Pictures/jarvis-screenshot-$(date +%s).png`, (err) => {
@@ -188,15 +190,22 @@ ipcMain.on('system-command', (event, cmd) => {
       exec('loginctl lock-session');
       break;
     case 'volume-up':
-      exec('pactl set-sink-volume @DEFAULT_SINK@ +5%');
+      exec('wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+', (err) => {
+        if (err) exec('amixer set Master 5%+');
+      });
       break;
     case 'volume-down':
-      exec('pactl set-sink-volume @DEFAULT_SINK@ -5%');
+      exec('wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-', (err) => {
+        if (err) exec('amixer set Master 5%-');
+      });
       break;
     default:
       if (cmd.startsWith('volume-set:')) {
         const pct = cmd.split(':')[1];
-        exec(`pactl set-sink-volume @DEFAULT_SINK@ ${pct}%`);
+        const wpctlVol = (parseInt(pct) / 100).toFixed(2);
+        exec(`wpctl set-volume @DEFAULT_AUDIO_SINK@ ${wpctlVol}`, (err) => {
+          if (err) exec(`amixer set Master ${pct}%`);
+        });
       }
       break;
   }
@@ -241,6 +250,14 @@ ipcMain.on('web-search', (event, query) => {
   spawn('xdg-open', [url], { detached: true, stdio: 'ignore' }).unref();
 });
 
+// Internet speed test - opens Chrome directly to the run page
+ipcMain.on('test-internet', () => {
+  console.log(`[JARVIS] Testing internet speed`);
+  // Use the direct /run URL which auto-starts the test
+  const url = 'https://www.speedtest.net/run';
+  spawn('google-chrome', ['--new-window', url], { detached: true, stdio: 'ignore' }).unref();
+});
+
 ipcMain.on('start-voice-engine', () => {
   if (!voiceProcess) {
     startVoiceEngine();
@@ -254,9 +271,110 @@ ipcMain.on('stop-voice-engine', () => {
   }
 });
 
+// System monitoring - get current stats
+ipcMain.on('get-system-stats', async (event) => {
+  try {
+    const [cpu, mem, disk, currentLoad, temp, networkStats, graphics, osInfo] = await Promise.all([
+      si.cpu(),
+      si.mem(),
+      si.fsSize(),
+      si.currentLoad(),
+      si.cpuTemperature(),
+      si.networkStats(),
+      si.graphics(),
+      si.osInfo()
+    ]);
+
+    // Sum network across all interfaces
+    const netRx = networkStats.reduce((sum, iface) => sum + (iface.rx_sec || 0), 0);
+    const netTx = networkStats.reduce((sum, iface) => sum + (iface.tx_sec || 0), 0);
+
+    const gpu = graphics.controllers?.[0];
+
+    const stats = {
+      cpu: {
+        model: cpu.brand || 'Unknown',
+        usage: Math.round(currentLoad.currentLoad),
+        cores: cpu.cores,
+        speed: cpu.speed,
+        temp: temp.main || 0
+      },
+      memory: {
+        total: (mem.total / 1024 / 1024 / 1024).toFixed(1),
+        used: (mem.used / 1024 / 1024 / 1024).toFixed(1),
+        percent: Math.round((mem.used / mem.total) * 100)
+      },
+      disk: {
+        total: Math.round(disk[0]?.size / 1024 / 1024 / 1024) || 0,
+        used: Math.round(disk[0]?.used / 1024 / 1024 / 1024) || 0,
+        percent: Math.round(disk[0]?.use) || 0
+      },
+      network: {
+        down: formatBytes(netRx),
+        up: formatBytes(netTx)
+      },
+      gpu: {
+        model: gpu?.model || 'N/A',
+        temp: gpu?.temperatureGpu || 0,
+        vram: gpu?.vram || 0
+      },
+      os: {
+        platform: osInfo.platform,
+        distro: osInfo.distro,
+        kernel: osInfo.kernel
+      },
+      uptime: os.uptime()
+    };
+
+    event.reply('system-stats', stats);
+  } catch (error) {
+    console.error('[JARVIS] System stats error:', error);
+    event.reply('system-stats', null);
+  }
+});
+
+function formatBytes(bytes) {
+  if (bytes === 0) return '0 B/s';
+  if (bytes < 1024) return bytes.toFixed(0) + ' B/s';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB/s';
+  return (bytes / 1024 / 1024).toFixed(1) + ' MB/s';
+}
+
+// Move window to the other monitor (toggle)
+ipcMain.on('move-to-other-monitor', () => {
+  if (!mainWindow) return;
+  const displays = screen.getAllDisplays();
+  if (displays.length < 2) {
+    console.log('[JARVIS] Only one display detected');
+    return;
+  }
+  // Find which display the window is currently on
+  const currentBounds = mainWindow.getBounds();
+  const currentDisplay = screen.getDisplayNearestPoint({ x: currentBounds.x, y: currentBounds.y });
+  // Pick the other display
+  const target = displays.find(d => d.id !== currentDisplay.id) || displays[0];
+  const { x, y, width, height } = target.workArea;
+  const winBounds = mainWindow.getBounds();
+  const newX = x + Math.round((width - winBounds.width) / 2);
+  const newY = y + Math.round((height - winBounds.height) / 2);
+  mainWindow.setPosition(newX, newY);
+  console.log(`[JARVIS] Moved to other display at ${newX},${newY}`);
+});
+
+// Get display info
+ipcMain.on('get-displays', (event) => {
+  const displays = screen.getAllDisplays();
+  event.reply('display-info', displays.map((d, i) => ({
+    index: i,
+    label: d.label || `Display ${i + 1}`,
+    width: d.size.width,
+    height: d.size.height,
+    primary: d.id === screen.getPrimaryDisplay().id
+  })));
+});
+
 app.whenReady().then(() => {
   createWindow();
-  // Auto-start voice engine
   startVoiceEngine();
 
   app.on('activate', () => {

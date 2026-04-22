@@ -4,295 +4,776 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JARVIS</title>
-    <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&family=Rajdhani:wght@300;400;500;600&display=swap');
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --cyan: #00d4ff;
+            --cyan-dim: rgba(0, 212, 255, 0.4);
+            --cyan-faint: rgba(0, 212, 255, 0.12);
+            --cyan-glow: rgba(0, 212, 255, 0.6);
+            --bg: #030508;
+            --panel-bg: rgba(3, 8, 16, 0.88);
+            --border: rgba(0, 212, 255, 0.18);
+            --text-dim: rgba(0, 212, 255, 0.55);
+            --warning: #ffaa00;
+            --danger: #ff4455;
+            --success: #00ff88;
+            --purple: #a855f7;
+            --gold: #fbbf24;
+        }
+
         body {
-            background-color: #050505;
-            color: #00d2ff;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg);
+            color: var(--cyan);
+            font-family: 'Rajdhani', sans-serif;
             overflow: hidden;
             height: 100vh;
+            display: grid;
+            grid-template-columns: 240px 1fr 240px;
+            grid-template-rows: 52px 1fr 44px;
+            gap: 0;
+        }
+
+        /* ── Top Bar ── */
+        .top-bar {
+            grid-column: 1 / -1;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            border-bottom: 1px solid var(--border);
+            background: var(--panel-bg);
+            -webkit-app-region: drag;
+            z-index: 100;
+        }
+
+        .top-bar-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-family: 'Orbitron', monospace;
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 3px;
+        }
+
+        .logo-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--cyan);
+            box-shadow: 0 0 8px var(--cyan);
+            animation: logo-pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes logo-pulse {
+            0%, 100% { opacity: 1; box-shadow: 0 0 8px var(--cyan); }
+            50% { opacity: 0.6; box-shadow: 0 0 4px var(--cyan); }
+        }
+
+        .top-bar-center {
+            font-family: 'Orbitron', monospace;
+            font-size: 11px;
+            letter-spacing: 4px;
+            color: var(--gold);
+        }
+
+        .top-bar-right {
+            display: flex;
+            gap: 4px;
+            -webkit-app-region: no-drag;
+        }
+
+        .top-btn {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text-dim);
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .top-btn:hover {
+            color: var(--cyan);
+            background: var(--cyan-faint);
+        }
+
+        /* ── Side Panels ── */
+        .side-panel {
+            padding: 16px 14px;
+            border-right: 1px solid var(--border);
+            background: var(--panel-bg);
+            overflow-y: auto;
             display: flex;
             flex-direction: column;
-            justify-content: center;
-            align-items: center;
+            gap: 2px;
         }
 
-        .arc-reactor {
-            position: relative;
-            width: 200px;
-            height: 200px;
-            border-radius: 50%;
-            border: 1px solid rgba(0, 210, 255, 0.2);
+        .side-panel.right-panel {
+            border-right: none;
+            border-left: 1px solid var(--border);
+        }
+
+        .panel-section { margin-bottom: 12px; }
+
+        .panel-header {
+            font-family: 'Orbitron', monospace;
+            font-size: 10px;
+            letter-spacing: 2.5px;
+            color: var(--gold);
+            text-transform: uppercase;
+            padding-bottom: 6px;
+            margin-bottom: 8px;
+            border-bottom: 1px solid rgba(251, 191, 36, 0.25);
+        }
+
+        .stat-row {
             display: flex;
-            justify-content: center;
+            justify-content: space-between;
             align-items: center;
-            box-shadow: 0 0 30px rgba(0, 210, 255, 0.05);
-            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            cursor: pointer;
+            padding: 5px 0;
         }
 
-        .arc-reactor.active {
-            border-color: rgba(0, 210, 255, 0.6);
-            box-shadow: 0 0 60px rgba(0, 210, 255, 0.2);
-            transform: scale(1.05);
+        .stat-label {
+            font-size: 13px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.6);
+            font-weight: 500;
         }
 
-        .inner-circle {
-            width: 140px;
-            height: 140px;
-            border-radius: 50%;
-            border: 2px dashed rgba(0, 210, 255, 0.4);
-            animation: rotate 15s linear infinite;
+        .stat-value {
+            font-family: 'Orbitron', monospace;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--cyan);
         }
 
-        .core {
+        .stat-value.warning { color: var(--warning); }
+        .stat-value.danger { color: var(--danger); }
+
+        .progress-track {
+            width: 100%;
+            height: 4px;
+            background: rgba(0, 212, 255, 0.08);
+            border-radius: 2px;
+            margin-top: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--cyan);
+            border-radius: 2px;
+            transition: width 1s ease;
+            position: relative;
+        }
+
+        .progress-fill.warning { background: var(--warning); }
+        .progress-fill.danger { background: var(--danger); }
+
+        .progress-fill::after {
+            content: '';
             position: absolute;
+            right: 0;
+            top: 0;
+            width: 20px;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4));
+        }
+
+        .mini-label {
+            font-size: 11px;
+            color: rgba(168, 85, 247, 0.6);
+            letter-spacing: 0.5px;
+            margin-top: 2px;
+        }
+
+        /* ── Center Area ── */
+        .center-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .center-area::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0, 212, 255, 0.015) 2px,
+                rgba(0, 212, 255, 0.015) 4px
+            );
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* Reactor */
+        .reactor-wrap {
+            position: relative;
+            width: 220px;
+            height: 220px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 10;
+            -webkit-app-region: no-drag;
+        }
+
+        .reactor-ring-outer {
+            position: absolute;
+            width: 220px;
+            height: 220px;
+            border-radius: 50%;
+            border: 1px solid var(--border);
+            animation: spin 30s linear infinite;
+        }
+
+        .reactor-ring-outer::before,
+        .reactor-ring-outer::after {
+            content: '';
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: var(--cyan-dim);
+            border-radius: 50%;
+        }
+
+        .reactor-ring-outer::before { top: -3px; left: 50%; transform: translateX(-50%); }
+        .reactor-ring-outer::after { bottom: -3px; left: 50%; transform: translateX(-50%); }
+
+        .reactor-ring-mid {
+            position: absolute;
+            width: 170px;
+            height: 170px;
+            border-radius: 50%;
+            border: 1px dashed rgba(0, 212, 255, 0.2);
+            animation: spin 20s linear infinite reverse;
+        }
+
+        .reactor-ring-inner {
+            position: absolute;
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: 2px solid rgba(0, 212, 255, 0.15);
+            animation: spin 12s linear infinite;
+        }
+
+        .reactor-ring-inner::before {
+            content: '';
+            position: absolute;
+            top: -1px; left: 50%;
+            width: 2px; height: 8px;
+            background: var(--cyan-dim);
+            transform: translateX(-50%);
+        }
+
+        .reactor-core {
             width: 60px;
             height: 60px;
-            background: radial-gradient(circle, rgba(0, 210, 255, 0.8) 0%, rgba(0, 51, 68, 0.8) 70%, transparent 100%);
             border-radius: 50%;
-            box-shadow: 0 0 20px #00d2ff;
+            background: radial-gradient(circle, rgba(0, 212, 255, 0.9) 0%, rgba(0, 100, 200, 0.4) 60%, transparent 100%);
+            box-shadow: 0 0 30px var(--cyan-glow), 0 0 60px rgba(0, 212, 255, 0.2);
+            z-index: 10;
+            position: relative;
+            animation: core-breathe 3s ease-in-out infinite;
+        }
+
+        .reactor-core::after {
+            content: '';
+            position: absolute;
+            inset: -4px;
+            border-radius: 50%;
+            border: 1px solid var(--cyan);
+            animation: core-pulse 2.5s ease-out infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes core-breathe {
+            0%, 100% { box-shadow: 0 0 30px var(--cyan-glow), 0 0 60px rgba(0, 212, 255, 0.2); }
+            50% { box-shadow: 0 0 40px var(--cyan-glow), 0 0 80px rgba(0, 212, 255, 0.35); }
+        }
+        @keyframes core-pulse {
+            0% { transform: scale(1); opacity: 0.6; }
+            100% { transform: scale(2.2); opacity: 0; }
+        }
+
+        .reactor-wrap.active .reactor-core {
+            box-shadow: 0 0 40px var(--cyan), 0 0 80px rgba(0, 212, 255, 0.5);
+        }
+
+        .reactor-wrap.active .reactor-ring-outer { border-color: var(--cyan-dim); }
+        .reactor-wrap.active .reactor-ring-inner { border-color: rgba(0, 212, 255, 0.35); }
+
+        .status-text {
+            margin-top: 28px;
+            font-family: 'Orbitron', monospace;
+            font-size: 12px;
+            font-weight: 400;
+            letter-spacing: 5px;
+            text-transform: uppercase;
+            color: var(--gold);
             z-index: 10;
         }
 
-        .core::after {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            border: 1px solid #00d2ff;
-            animation: pulse 2s ease-out infinite;
-        }
-
-        @keyframes rotate {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-
-        @keyframes pulse {
-            0% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
-            100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; }
-        }
-
-        .status-text {
-            margin-top: 3rem;
-            font-weight: 300;
-            letter-spacing: 5px;
-            text-transform: uppercase;
-            opacity: 0.7;
-            font-size: 0.75rem;
-        }
-
-        .transcript {
-            margin-top: 1.5rem;
-            max-width: 70%;
+        .transcript-text {
+            margin-top: 12px;
+            max-width: 90%;
             text-align: center;
-            font-style: italic;
-            height: 4rem;
-            color: rgba(0, 210, 255, 0.5);
-            font-size: 0.9rem;
+            font-size: 17px;
+            font-weight: 400;
+            color: rgba(255, 255, 255, 0.7);
+            min-height: 2.5rem;
+            z-index: 10;
             line-height: 1.5;
         }
 
-        .glow-text {
-            text-shadow: 0 0 8px #00d2ff;
+        /* ── Bottom Bar ── */
+        .bottom-bar {
+            grid-column: 1 / -1;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            border-top: 1px solid var(--border);
+            background: var(--panel-bg);
+            font-family: 'Orbitron', monospace;
+            font-size: 10px;
+            letter-spacing: 2px;
+            color: rgba(255, 255, 255, 0.4);
         }
 
-        .hud-line {
-            position: absolute;
-            background: rgba(0, 210, 255, 0.1);
+        .bottom-bar-section { display: flex; gap: 24px; }
+
+        .bottom-indicator { display: flex; align-items: center; gap: 6px; }
+
+        .indicator-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--success);
+            box-shadow: 0 0 6px var(--success);
         }
 
+        .indicator-dot.warn { background: var(--warning); box-shadow: 0 0 4px var(--warning); }
+        .indicator-dot.off { background: #555; box-shadow: none; }
+
+        /* ── Overlays ── */
+        .overlay-panel {
+            display: none;
+            position: fixed;
+            top: 52px;
+            background: rgba(3, 8, 16, 0.96);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 16px;
+            z-index: 200;
+            max-height: calc(100vh - 100px);
+            overflow-y: auto;
+            backdrop-filter: blur(12px);
+        }
+
+        .overlay-panel.show { display: block; }
+        .overlay-panel.left-overlay { left: 16px; width: 420px; }
+        .overlay-panel.right-overlay { right: 16px; width: 340px; }
+
+        .overlay-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .overlay-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 12px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--gold);
+        }
+
+        .overlay-close {
+            cursor: pointer;
+            color: var(--text-dim);
+            transition: color 0.2s;
+            background: none;
+            border: none;
+            padding: 4px;
+        }
+
+        .overlay-close:hover { color: var(--cyan); }
+
+        .cmd-group { margin-bottom: 14px; }
+        .cmd-group-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 11px;
+            letter-spacing: 2px;
+            color: var(--cyan);
+            margin-bottom: 6px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid rgba(0, 212, 255, 0.08);
+        }
+        .cmd-item {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.55);
+            padding: 3px 0 3px 10px;
+            border-left: 2px solid var(--cyan-faint);
+        }
+        .cmd-item span { color: var(--cyan); font-weight: 500; }
+
+        .setting-group { margin-bottom: 14px; }
+        .setting-label {
+            font-family: 'Orbitron', monospace;
+            font-size: 10px;
+            letter-spacing: 2px;
+            color: var(--gold);
+            margin-bottom: 6px;
+            display: block;
+        }
+
+        select, input[type="range"] {
+            width: 100%;
+            background: rgba(0, 212, 255, 0.05);
+            border: 1px solid var(--border);
+            color: var(--cyan);
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 14px;
+            padding: 6px 8px;
+            border-radius: 3px;
+            outline: none;
+        }
+
+        input[type="range"] { accent-color: var(--cyan); padding: 0; height: 20px; }
+
+        .setting-btn {
+            width: 100%;
+            padding: 10px;
+            background: rgba(0, 212, 255, 0.06);
+            border: 1px solid var(--border);
+            color: var(--cyan);
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 13px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            cursor: pointer;
+            border-radius: 3px;
+            transition: all 0.2s;
+        }
+
+        .setting-btn:hover {
+            background: rgba(0, 212, 255, 0.12);
+            border-color: var(--cyan-dim);
+        }
+
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .setting-val {
+            font-family: 'Orbitron', monospace;
+            font-size: 12px;
+            color: var(--cyan);
+        }
+
+        .checkbox-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        input[type="checkbox"] { accent-color: var(--cyan); width: 14px; height: 14px; }
+
+        ::-webkit-scrollbar { width: 3px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+        .net-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; }
+        .net-arrow { font-size: 12px; }
+        .net-arrow.down { color: var(--success); }
+        .net-arrow.up { color: var(--warning); }
+
+        #mic-test-result { font-size: 12px; color: rgba(255,255,255,0.5); text-align: center; margin-top: 6px; }
     </style>
 </head>
 <body>
-    <!-- Simple HUD elements -->
-    <div class="hud-line w-full h-[1px] top-10"></div>
-    <div class="hud-line w-[1px] h-full left-10"></div>
 
-    <!-- Close Button -->
-    <div id="close-btn" class="absolute top-4 right-4 cursor-pointer text-cyan-400 opacity-40 hover:opacity-100 transition-opacity z-50 p-2" title="Close">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    <!-- TOP BAR -->
+    <div class="top-bar">
+        <div class="top-bar-left">
+            <div class="logo-dot"></div>
+            <span>J.A.R.V.I.S</span>
+        </div>
+        <div class="top-bar-center" id="status">SYSTEM ONLINE</div>
+        <div class="top-bar-right">
+            <div class="top-btn" id="help-btn" title="Commands">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </div>
+            <div class="top-btn" id="settings-btn" title="Settings">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </div>
+            <div class="top-btn" id="close-btn" title="Close">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </div>
+        </div>
     </div>
 
-    <!-- Settings Button -->
-    <div id="settings-btn" class="absolute top-4 right-14 cursor-pointer text-cyan-400 opacity-40 hover:opacity-100 transition-opacity z-50 p-2" title="Settings">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="3"></circle>
-            <path d="M12 1v6M12 17v6M5.64 5.64l4.24 4.24M14.12 14.12l4.24 4.24M1 12h6M17 12h6M5.64 18.36l4.24-4.24M14.12 9.88l4.24-4.24"></path>
-        </svg>
+    <!-- LEFT PANEL -->
+    <div class="side-panel">
+        <div class="panel-section">
+            <div class="panel-header">Processor</div>
+            <div class="stat-row">
+                <span class="stat-label">CPU</span>
+                <span class="stat-value" id="cpu-usage">--%</span>
+            </div>
+            <div class="progress-track"><div class="progress-fill" id="cpu-bar" style="width:0%"></div></div>
+            <div class="mini-label" id="cpu-model">--</div>
+            <div class="stat-row" style="margin-top:8px;">
+                <span class="stat-label">Temp</span>
+                <span class="stat-value" id="cpu-temp">--</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Cores</span>
+                <span class="stat-value" id="cpu-cores">--</span>
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <div class="panel-header">Memory</div>
+            <div class="stat-row">
+                <span class="stat-label">RAM</span>
+                <span class="stat-value" id="memory-usage">--</span>
+            </div>
+            <div class="progress-track"><div class="progress-fill" id="memory-bar" style="width:0%"></div></div>
+            <div class="mini-label" id="memory-detail">--</div>
+        </div>
+
+        <div class="panel-section">
+            <div class="panel-header">Storage</div>
+            <div class="stat-row">
+                <span class="stat-label">Disk</span>
+                <span class="stat-value" id="disk-usage">--%</span>
+            </div>
+            <div class="progress-track"><div class="progress-fill" id="disk-bar" style="width:0%"></div></div>
+            <div class="mini-label" id="disk-detail">--</div>
+        </div>
+
+        <div class="panel-section">
+            <div class="panel-header">Network</div>
+            <div class="net-row">
+                <span class="stat-label"><span class="net-arrow down">▼</span> Down</span>
+                <span class="stat-value" id="net-down">--</span>
+            </div>
+            <div class="net-row">
+                <span class="stat-label"><span class="net-arrow up">▲</span> Up</span>
+                <span class="stat-value" id="net-up">--</span>
+            </div>
+        </div>
     </div>
 
-    <!-- Help/Commands Button -->
-    <div id="help-btn" class="absolute top-4 right-24 cursor-pointer text-cyan-400 opacity-40 hover:opacity-100 transition-opacity z-50 p-2" title="Commands">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"></circle>
-            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-            <line x1="12" y1="17" x2="12.01" y2="17"></line>
-        </svg>
+    <!-- CENTER -->
+    <div class="center-area">
+        <div class="reactor-wrap" id="reactor-container">
+            <div class="reactor-ring-outer"></div>
+            <div class="reactor-ring-mid" id="rotating-ring"></div>
+            <div class="reactor-ring-inner"></div>
+            <div class="reactor-core"></div>
+        </div>
+        <div class="status-text" id="status-sub">Initializing</div>
+        <div class="transcript-text" id="transcript">Ready for instructions, Sir.</div>
     </div>
 
-    <!-- Commands Window -->
-    <div id="commands-panel" class="hidden absolute top-16 left-4 bg-black bg-opacity-95 border border-cyan-400 border-opacity-40 rounded p-4 z-50 w-96 max-h-96 overflow-y-auto">
-        <div class="flex justify-between items-center mb-3">
-            <h3 class="text-cyan-400 text-sm uppercase tracking-wider">Available Commands</h3>
-            <button id="close-commands" class="text-cyan-400 opacity-60 hover:opacity-100">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    <!-- RIGHT PANEL -->
+    <div class="side-panel right-panel">
+        <div class="panel-section">
+            <div class="panel-header">Graphics</div>
+            <div class="stat-row">
+                <span class="stat-label">GPU</span>
+                <span class="stat-value" id="gpu-temp" style="font-size:11px;">--</span>
+            </div>
+            <div class="mini-label" id="gpu-model">--</div>
+            <div class="stat-row" style="margin-top:6px;">
+                <span class="stat-label">VRAM</span>
+                <span class="stat-value" id="gpu-vram">--</span>
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <div class="panel-header">System</div>
+            <div class="stat-row">
+                <span class="stat-label">Uptime</span>
+                <span class="stat-value" id="system-uptime" style="font-size:11px;">--</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">OS</span>
+                <span class="stat-value" id="os-info" style="font-size:10px;">--</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Kernel</span>
+                <span class="stat-value" id="kernel-info" style="font-size:9px;">--</span>
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <div class="panel-header">Displays</div>
+            <div id="display-list">
+                <div class="mini-label">Detecting...</div>
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <div class="panel-header">Session</div>
+            <div class="stat-row">
+                <span class="stat-label">Time</span>
+                <span class="stat-value" id="current-time" style="font-size:11px;">--</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Date</span>
+                <span class="stat-value" id="current-date" style="font-size:9px;">--</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- BOTTOM BAR -->
+    <div class="bottom-bar">
+        <div class="bottom-bar-section">
+            <div class="bottom-indicator">
+                <div class="indicator-dot" id="voice-dot"></div>
+                <span id="footer-voice">V_REC: STANDBY</span>
+            </div>
+            <div class="bottom-indicator">
+                <div class="indicator-dot" id="net-dot"></div>
+                <span>UPLINK: SECURE</span>
+            </div>
+        </div>
+        <div class="bottom-bar-section">
+            <span id="footer-temp">CORE: --°C</span>
+            <span id="app-version">v--</span>
+        </div>
+    </div>
+
+    <!-- COMMANDS OVERLAY -->
+    <div id="commands-panel" class="overlay-panel left-overlay">
+        <div class="overlay-header">
+            <span class="overlay-title">Command Reference</span>
+            <button class="overlay-close" id="close-commands">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
         </div>
-
-        <div class="space-y-3 text-xs">
-            <div class="border-b border-cyan-400 border-opacity-20 pb-2">
-                <div class="text-cyan-300 font-semibold mb-1">🗣️ Wake Word</div>
-                <div class="text-cyan-400 opacity-70 pl-2">"Daddy is Home" — activates JARVIS</div>
-            </div>
-
-            <div class="border-b border-cyan-400 border-opacity-20 pb-2">
-                <div class="text-cyan-300 font-semibold mb-1">💬 General</div>
-                <div class="text-cyan-400 opacity-70 pl-2">• "Hello" / "Jarvis" • "Status"</div>
-                <div class="text-cyan-400 opacity-70 pl-2">• "Who are you" • "Thank you"</div>
-                <div class="text-cyan-400 opacity-70 pl-2">• "What time" • "What date"</div>
-                <div class="text-cyan-400 opacity-70 pl-2">• "Tell me a joke"</div>
-                <div class="text-cyan-400 opacity-70 pl-2">• "Goodbye" / "Go to sleep"</div>
-            </div>
-
-            <div class="border-b border-cyan-400 border-opacity-20 pb-2">
-                <div class="text-cyan-300 font-semibold mb-1">🚀 Apps</div>
-                <div class="text-cyan-400 opacity-70 pl-2">"Open [app]" — launch an app</div>
-                <div class="text-cyan-400 opacity-70 pl-2">"Close [app]" / "Exit [app]" — close it</div>
-                <div class="text-cyan-400 opacity-60 pl-2 text-[10px]">Chrome, Firefox, Spotify, IntelliJ, VS Code, Postman, Discord, Terminal, Files</div>
-            </div>
-
-            <div class="border-b border-cyan-400 border-opacity-20 pb-2">
-                <div class="text-cyan-300 font-semibold mb-1">🎵 Music</div>
-                <div class="text-cyan-400 opacity-70 pl-2">• "Play [song]" — plays on Spotify</div>
-                <div class="text-cyan-400 opacity-70 pl-2">• "Pause" / "Resume"</div>
-                <div class="text-cyan-400 opacity-70 pl-2">• "Next song" / "Previous"</div>
-                <div class="text-cyan-400 opacity-70 pl-2">• "Volume up" / "Volume down" / "Mute"</div>
-            </div>
-
-            <div class="border-b border-cyan-400 border-opacity-20 pb-2">
-                <div class="text-cyan-300 font-semibold mb-1">🔍 Web</div>
-                <div class="text-cyan-400 opacity-70 pl-2">"Search [query]" / "Google [query]"</div>
-            </div>
-
-            <div class="border-b border-cyan-400 border-opacity-20 pb-2">
-                <div class="text-cyan-300 font-semibold mb-1">🖥️ System</div>
-                <div class="text-cyan-400 opacity-70 pl-2">• "Screenshot" • "Lock screen"</div>
-            </div>
-
-            <div class="border-b border-cyan-400 border-opacity-20 pb-2">
-                <div class="text-cyan-300 font-semibold mb-1">⚡ Workflows</div>
-                <div class="text-cyan-400 opacity-70 pl-2">"We have work to do"</div>
-                <div class="text-cyan-400 opacity-50 pl-2 text-[10px]">→ Chrome + IntelliJ + Spotify + Highway to Hell 🎸</div>
-            </div>
+        <div class="cmd-group">
+            <div class="cmd-group-title">Wake Word</div>
+            <div class="cmd-item"><span>"Daddy is Home"</span> — activate JARVIS</div>
+            <div class="cmd-item"><span>"Gabby is here"</span> — greet Gabby + play her song 💜</div>
+        </div>
+        <div class="cmd-group">
+            <div class="cmd-group-title">General</div>
+            <div class="cmd-item"><span>"Hello"</span> / <span>"Status"</span> / <span>"Who are you"</span></div>
+            <div class="cmd-item"><span>"What time"</span> / <span>"What date"</span> / <span>"Tell me a joke"</span></div>
+            <div class="cmd-item"><span>"Goodbye"</span> / <span>"Go to sleep"</span></div>
+        </div>
+        <div class="cmd-group">
+            <div class="cmd-group-title">Applications</div>
+            <div class="cmd-item"><span>"Open [app]"</span> — launch any app</div>
+            <div class="cmd-item"><span>"Close [app]"</span> — kill app</div>
+            <div class="cmd-item" style="font-size:10px;color:rgba(0,212,255,0.3)">Chrome · Firefox · Spotify · IntelliJ · VS Code · Postman · Discord · Terminal · Files</div>
+        </div>
+        <div class="cmd-group">
+            <div class="cmd-group-title">Music & Media</div>
+            <div class="cmd-item"><span>"Play [song]"</span> — search & play on Spotify</div>
+            <div class="cmd-item"><span>"Pause"</span> / <span>"Resume"</span> / <span>"Next"</span> / <span>"Previous"</span></div>
+            <div class="cmd-item"><span>"Volume up"</span> / <span>"Volume down"</span> / <span>"Mute"</span></div>
+            <div class="cmd-item"><span>"Volume [number]"</span> — set volume to X%</div>
+        </div>
+        <div class="cmd-group">
+            <div class="cmd-group-title">Search</div>
+            <div class="cmd-item"><span>"Search [query]"</span> / <span>"Google [query]"</span></div>
+        </div>
+        <div class="cmd-group">
+            <div class="cmd-group-title">System</div>
+            <div class="cmd-item"><span>"Screenshot"</span> / <span>"Lock screen"</span></div>
+            <div class="cmd-item"><span>"Test internet"</span> / <span>"Speed test"</span></div>
+            <div class="cmd-item"><span>"Move to other screen"</span> — dual monitor</div>
+        </div>
+        <div class="cmd-group">
+            <div class="cmd-group-title">Workflows</div>
+            <div class="cmd-item"><span>"We have work to do"</span> — Chrome + IntelliJ + Discord + Spotify</div>
         </div>
     </div>
 
-    <!-- Settings Panel -->
-    <div id="settings-panel" class="hidden absolute top-16 right-4 bg-black bg-opacity-95 border border-cyan-400 border-opacity-30 rounded p-4 z-50 w-80 max-h-[80vh] overflow-y-auto">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="text-cyan-400 text-sm uppercase tracking-wider">Voice Settings</h3>
-            <button id="close-settings" class="text-cyan-400 opacity-60 hover:opacity-100">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    <!-- SETTINGS OVERLAY -->
+    <div id="settings-panel" class="overlay-panel right-overlay">
+        <div class="overlay-header">
+            <span class="overlay-title">Voice Settings</span>
+            <button class="overlay-close" id="close-settings">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
         </div>
-
-        <div class="space-y-4">
-            <!-- Voice Type -->
-            <div>
-                <label class="text-cyan-400 text-xs uppercase tracking-wide block mb-2">Voice Type</label>
-                <select id="voice-type-select" class="w-full bg-black bg-opacity-50 border border-cyan-400 border-opacity-30 text-cyan-400 text-xs p-2 rounded">
-                    <option value="male1" selected>Male 1</option>
-                    <option value="male2">Male 2</option>
-                    <option value="male3">Male 3</option>
-                    <option value="female1">Female 1</option>
-                    <option value="female2">Female 2</option>
-                    <option value="female3">Female 3</option>
-                    <option value="child_male">Child Male</option>
-                </select>
+        <div class="setting-group">
+            <label class="setting-label" for="voice-type-select">Voice Type</label>
+            <select id="voice-type-select">
+                <option value="male1" selected>Male 1</option>
+                <option value="male2">Male 2</option>
+                <option value="male3">Male 3</option>
+                <option value="female1">Female 1</option>
+                <option value="female2">Female 2</option>
+                <option value="female3">Female 3</option>
+                <option value="child_male">Child Male</option>
+            </select>
+        </div>
+        <div class="setting-group">
+            <div class="setting-row">
+                <label class="setting-label" for="voice-rate">Speed</label>
+                <span class="setting-val" id="rate-value">5</span>
             </div>
-
-            <!-- Speech Rate -->
-            <div>
-                <div class="flex justify-between">
-                    <label class="text-cyan-400 text-xs uppercase tracking-wide">Speed</label>
-                    <span id="rate-value" class="text-cyan-400 text-xs opacity-60">0</span>
-                </div>
-                <input type="range" id="voice-rate" min="-100" max="100" value="0" class="w-full mt-1 accent-cyan-400">
-                <div class="flex justify-between text-[9px] text-cyan-400 opacity-40">
-                    <span>Slow</span><span>Normal</span><span>Fast</span>
-                </div>
+            <input type="range" id="voice-rate" min="-100" max="100" value="5">
+        </div>
+        <div class="setting-group">
+            <div class="setting-row">
+                <label class="setting-label" for="voice-pitch">Pitch</label>
+                <span class="setting-val" id="pitch-value">-70</span>
             </div>
-
-            <!-- Pitch -->
-            <div>
-                <div class="flex justify-between">
-                    <label class="text-cyan-400 text-xs uppercase tracking-wide">Pitch</label>
-                    <span id="pitch-value" class="text-cyan-400 text-xs opacity-60">0</span>
-                </div>
-                <input type="range" id="voice-pitch" min="-100" max="100" value="0" class="w-full mt-1 accent-cyan-400">
-                <div class="flex justify-between text-[9px] text-cyan-400 opacity-40">
-                    <span>Low</span><span>Normal</span><span>High</span>
-                </div>
+            <input type="range" id="voice-pitch" min="-100" max="100" value="-70">
+        </div>
+        <div class="setting-group">
+            <div class="setting-row">
+                <label class="setting-label" for="voice-volume">Volume</label>
+                <span class="setting-val" id="volume-value">100</span>
             </div>
-
-            <!-- Volume -->
-            <div>
-                <div class="flex justify-between">
-                    <label class="text-cyan-400 text-xs uppercase tracking-wide">Volume</label>
-                    <span id="volume-value" class="text-cyan-400 text-xs opacity-60">100</span>
-                </div>
-                <input type="range" id="voice-volume" min="-100" max="100" value="100" class="w-full mt-1 accent-cyan-400">
-                <div class="flex justify-between text-[9px] text-cyan-400 opacity-40">
-                    <span>Quiet</span><span>Normal</span><span>Loud</span>
-                </div>
-            </div>
-
-            <!-- Test Voice -->
-            <div>
-                <button id="test-voice-btn" class="w-full bg-cyan-400 bg-opacity-10 border border-cyan-400 border-opacity-40 text-cyan-400 text-xs py-2 px-4 rounded hover:bg-opacity-20 transition-all">
-                    🔊 Test Voice
-                </button>
-            </div>
-
-            <div class="border-t border-cyan-400 border-opacity-20 pt-3">
-                <label class="text-cyan-400 text-xs uppercase tracking-wide block mb-2">Voice Responses</label>
-                <div class="flex items-center space-x-2">
-                    <input type="checkbox" id="voice-response-toggle" checked class="h-4 w-4 accent-cyan-400">
-                    <span class="text-cyan-400 text-xs">Enable spoken replies</span>
-                </div>
-            </div>
-
-            <!-- Mic Test -->
-            <div class="border-t border-cyan-400 border-opacity-20 pt-3">
-                <label class="text-cyan-400 text-xs uppercase tracking-wide block mb-2">Microphone</label>
-                <button id="mic-test-btn" class="w-full bg-cyan-400 bg-opacity-10 border border-cyan-400 border-opacity-40 text-cyan-400 text-xs py-2 px-4 rounded hover:bg-opacity-20 transition-all">
-                    🎤 Test Microphone
-                </button>
-                <div id="mic-test-result" class="text-cyan-400 text-xs mt-2 opacity-60 text-center"></div>
+            <input type="range" id="voice-volume" min="-100" max="100" value="100">
+        </div>
+        <div class="setting-group">
+            <button class="setting-btn" id="test-voice-btn">▶ Test Voice</button>
+        </div>
+        <div class="setting-group" style="border-top: 1px solid var(--border); padding-top: 12px;">
+            <div class="checkbox-wrap">
+                <input type="checkbox" id="voice-response-toggle" checked>
+                <span>Enable spoken replies</span>
             </div>
         </div>
-    </div>
-
-    <div id="reactor-container" class="arc-reactor">
-        <div class="inner-circle" id="rotating-ring"></div>
-        <div class="core"></div>
-    </div>
-
-    <div class="status-text glow-text" id="status">System Online</div>
-    <div class="transcript" id="transcript">Ready for instructions, Sir.</div>
-
-
-    <div class="absolute bottom-10 flex space-x-12 text-[9px] uppercase tracking-[0.2em] opacity-40 font-mono">
-        <div>CORE_TEMP: 32°C</div>
-        <div>UPLINK: SECURE</div>
-        <div>V_REC: STANDBY</div>
+        <div class="setting-group" style="border-top: 1px solid var(--border); padding-top: 12px;">
+            <label class="setting-label">Microphone</label>
+            <button class="setting-btn" id="mic-test-btn">🎤 Test Microphone</button>
+            <div id="mic-test-result"></div>
+        </div>
     </div>
 
     <script src="renderer.js"></script>

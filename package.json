@@ -1,6 +1,6 @@
 {
   "name": "jarvis-assistant",
-  "version": "1.0.0",
+  "version": "2.4.1",
   "description": "JARVIS Voice Assistant - AI voice assistant inspired by Iron Man",
   "main": "main.js",
   "author": "Your Name",
@@ -40,6 +40,7 @@
   "dependencies": {
     "electron-store": "^11.0.2",
     "lucide": "^1.8.0",
+    "systeminformation": "^5.31.5",
     "tailwindcss": "^4.2.4",
     "vosk-browser": "^0.0.8"
   }
