@@ -1,0 +1,46 @@
+{
+  "name": "jarvis-assistant",
+  "version": "1.0.0",
+  "description": "JARVIS Voice Assistant - AI voice assistant inspired by Iron Man",
+  "main": "main.js",
+  "author": "Your Name",
+  "license": "ISC",
+  "scripts": {
+    "start": "electron .",
+    "build:win": "electron-builder --win --x64",
+    "build:linux": "electron-builder --linux",
+    "build:all": "electron-builder -wl"
+  },
+  "build": {
+    "appId": "com.jarvis.assistant",
+    "productName": "JARVIS Assistant",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "renderer.js",
+      "index.html",
+      "package.json"
+    ],
+    "win": {
+      "target": "dir",
+      "artifactName": "${productName}-${version}-win.${ext}"
+    },
+    "linux": {
+      "target": "AppImage",
+      "category": "Utility",
+      "artifactName": "${productName}-${version}-linux.${ext}"
+    }
+  },
+  "devDependencies": {
+    "electron": "^41.2.2",
+    "electron-builder": "^25.1.8"
+  },
+  "dependencies": {
+    "electron-store": "^11.0.2",
+    "lucide": "^1.8.0",
+    "tailwindcss": "^4.2.4",
+    "vosk-browser": "^0.0.8"
+  }
+}
