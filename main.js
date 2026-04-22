@@ -143,17 +143,23 @@ ipcMain.on('spotify-search-play', (event, query) => {
   const searchUri = `spotify:search:${encodeURIComponent(query)}`;
   spawn('xdg-open', [searchUri], { detached: true, stdio: 'ignore' }).unref();
 
-  // After search loads, focus Spotify and press Enter to play first result
-  // Then use Tab+Enter or just Enter to start playback
+  // After search loads, focus Spotify and use keyboard to play first result
   setTimeout(() => {
     exec('xdotool search --name "Spotify" windowactivate --sync 2>/dev/null', () => {
-      // Small delay after focus, then press Enter to play top result
       setTimeout(() => {
-        exec('xdotool key Return');
-        console.log('[JARVIS] Sent Enter to Spotify to play first result');
-      }, 800);
+        // Tab into results area, then Enter to play
+        // Multiple Tab presses to reach the first song result, then Enter
+        exec('xdotool key Tab Tab Tab Tab Tab Tab Enter', (err) => {
+          if (err) {
+            console.log('[JARVIS] Tab+Enter failed, trying direct Enter');
+            exec('xdotool key Return');
+          } else {
+            console.log('[JARVIS] Sent Tab+Enter to Spotify to play first result');
+          }
+        });
+      }, 1500);
     });
-  }, 2500);
+  }, 3000);
 });
 
 // Media controls — use XF86 media keys via xdotool (works with snap Spotify)
@@ -198,6 +204,27 @@ ipcMain.on('system-command', (event, cmd) => {
       exec('wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-', (err) => {
         if (err) exec('amixer set Master 5%-');
       });
+      break;
+    case 'brightness-up':
+      exec('brightnessctl set +10% 2>/dev/null || xrandr --output $(xrandr | grep " connected" | head -1 | cut -d" " -f1) --brightness 1.0');
+      break;
+    case 'brightness-down':
+      exec('brightnessctl set 10%- 2>/dev/null || xrandr --output $(xrandr | grep " connected" | head -1 | cut -d" " -f1) --brightness 0.7');
+      break;
+    case 'dnd-on':
+      exec('gsettings set org.gnome.desktop.notifications show-banners false 2>/dev/null');
+      break;
+    case 'dnd-off':
+      exec('gsettings set org.gnome.desktop.notifications show-banners true 2>/dev/null');
+      break;
+    case 'empty-trash':
+      exec(`rm -rf ${os.homedir()}/.local/share/Trash/files/* ${os.homedir()}/.local/share/Trash/info/*`);
+      break;
+    case 'reboot':
+      exec('systemctl reboot');
+      break;
+    case 'poweroff':
+      exec('systemctl poweroff');
       break;
     default:
       if (cmd.startsWith('volume-set:')) {

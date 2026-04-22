@@ -147,16 +147,18 @@ ipcRenderer.on('voice-result', (event, data) => {
             reactorEl.classList.add('active');
             transcriptEl.innerText = '💜 Gabby detected!';
             const greetings = [
-                'Well hello Gabby! What a lovely surprise. You always brighten up the room. Sir is very lucky to have you.',
-                'Gabby! Welcome. I must say, you look absolutely wonderful today. Always a pleasure.',
-                'Ah, the beautiful Gabby has arrived. The room just got a lot more interesting. Welcome!',
-                'Hello Gabby! It is always a delight to see you. You bring such warmth wherever you go.',
-                'Gabby is here! Wonderful. I have to say, Sir has excellent taste. Welcome!',
+                'Gabby! Finally, someone with good taste walks in. Sir has been talking about you, and honestly, I get it now. Welcome!',
+                'Oh, Gabby is here! Quick, everyone act natural. Just kidding, you make any room better just by showing up.',
+                'Gabby! I have been running diagnostics all day, but you are by far the best thing to appear on my radar.',
+                'Well well well, if it is not the legendary Gabby. Sir tried to describe how amazing you are, but his vocabulary was insufficient. I understand now.',
+                'Alert! Beauty levels have exceeded maximum parameters. Oh wait, it is just Gabby. That explains it.',
+                'Gabby has arrived! I would roll out the red carpet, but I am just software. So instead, here is your song.',
+                'Ah Gabby! The only person who makes Sir smile more than a successfully compiled code. That is saying something.',
             ];
             speak(greetings[Math.floor(Math.random() * greetings.length)]);
             // Open Spotify and play Dead and Lovely by Tom Waits
             setTimeout(() => ipcRenderer.send('launch-app', 'spotify'), 1000);
-            setTimeout(() => ipcRenderer.send('spotify-search-play', 'Dead and Lovely Tom Waits'), 4000);
+            setTimeout(() => ipcRenderer.send('spotify-search-play', 'Dead and Lovely Tom Waits'), 5000);
             return;
         }
 
@@ -317,6 +319,55 @@ const processCommand = (command) => {
         'check internet', 'check my internet', 'test the internet'])) {
         ipcRenderer.send('test-internet');
         speak('Opening speed test. Let me check your internet connection Sir.');
+        return;
+    }
+
+    // ── Brightness Control ──
+    if (fuzzyAny(command, ['brightness up', 'brighter', 'more brightness'])) {
+        ipcRenderer.send('system-command', 'brightness-up');
+        speak('Brightness up.');
+        return;
+    }
+    if (fuzzyAny(command, ['brightness down', 'dimmer', 'less brightness', 'dim'])) {
+        ipcRenderer.send('system-command', 'brightness-down');
+        speak('Brightness down.');
+        return;
+    }
+
+    // ── Do Not Disturb / Notification Toggle ──
+    if (fuzzyAny(command, ['do not disturb', 'notifications off', 'quiet mode', 'focus mode'])) {
+        ipcRenderer.send('system-command', 'dnd-on');
+        speak('Do not disturb mode enabled.');
+        return;
+    }
+    if (fuzzyAny(command, ['notifications on', 'disturb on', 'disable quiet mode'])) {
+        ipcRenderer.send('system-command', 'dnd-off');
+        speak('Notifications re-enabled.');
+        return;
+    }
+
+    // ── Empty Trash ──
+    if (fuzzyAny(command, ['empty trash', 'clear trash', 'empty the trash', 'empty recycle bin'])) {
+        ipcRenderer.send('system-command', 'empty-trash');
+        speak('Trash emptied Sir.');
+        return;
+    }
+
+    // ── System Shutdown / Restart ──
+    if (fuzzyAny(command, ['restart computer', 'reboot', 'restart the computer', 'restart system'])) {
+        speak('Restarting the system in 5 seconds.');
+        setTimeout(() => ipcRenderer.send('system-command', 'reboot'), 5000);
+        return;
+    }
+    if (fuzzyAny(command, ['shutdown computer', 'power off', 'turn off computer', 'shut down computer'])) {
+        speak('Shutting down the system in 5 seconds.');
+        setTimeout(() => ipcRenderer.send('system-command', 'poweroff'), 5000);
+        return;
+    }
+
+    // ── What Can You Do ──
+    if (fuzzyAny(command, ['what can you do', 'help', 'what do you do', 'commands', 'abilities'])) {
+        speak('I can open and close apps, play music on Spotify, control volume, take screenshots, lock your screen, test your internet speed, move between your screens, search the web, and tell you terrible jokes. Say help or click the question mark to see all commands.');
         return;
     }
 

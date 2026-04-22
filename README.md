@@ -34,6 +34,7 @@ Control your system, launch apps, play music, and interact using **natural voice
 - **Fuzzy matching** with edit-distance tolerance — no need to speak perfectly
 - Word-to-number parsing for spoken numbers (e.g. "volume fifty")
 - **Neural TTS** via [Piper](https://github.com/rhasspy/piper) — natural human-sounding British voice
+- **Auto mic-mute** during speech — prevents JARVIS from hearing itself
 - Fallback to spd-say if Piper unavailable
 
 ### 🎨 Interface
@@ -198,7 +199,13 @@ npm start
 | "Test internet" / "Speed test" | Open speedtest.net (auto-starts) |
 | "Screenshot" | Capture screen |
 | "Lock screen" | Lock session |
+| "Brightness up" / "Brightness down" | Screen brightness control |
+| "Do not disturb" | Disable notifications |
+| "Notifications on" | Re-enable notifications |
+| "Empty trash" | Clear trash/recycle bin |
+| "Restart computer" / "Power off" | System restart/shutdown (5s delay) |
 | "Move to other screen" | Toggle window between monitors |
+| "What can you do" | List all JARVIS abilities |
 | "We have work to do" | Launch full dev workspace |
 | "What time" / "What date" | Time & date |
 | "Tell me a joke" | Random dev joke |
